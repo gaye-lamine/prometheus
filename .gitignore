@@ -1,0 +1,12 @@
+# Ignorer tous les fichiers Markdown
+*.md
+
+# Sauf le fichier README.md
+!README.md
+
+# Ignorer venv et caches python
+backend/venv/
+backend/__pycache__/
+.DS_Store
+**/__pycache__/
+**/.DS_Store

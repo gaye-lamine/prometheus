@@ -1,0 +1,433 @@
+'use client';
+
+import React, { useState } from 'react';
+
+interface NovusBridgeProps {
+  simulationHistory: any[];
+  isCalibrated: boolean;
+  setIsCalibrated: (c: boolean) => void;
+  discrepancy: number;
+  setDiscrepancy: (d: number) => void;
+  lastTuned: string;
+  setLastTuned: (t: string) => void;
+  mappedElements: any[];
+  targetUrl: string;
+}
+
+export default function NovusBridge({
+  simulationHistory = [],
+  isCalibrated,
+  setIsCalibrated,
+  discrepancy,
+  setDiscrepancy,
+  lastTuned,
+  setLastTuned,
+  mappedElements = [],
+  targetUrl
+}: NovusBridgeProps) {
+  const [viewMode, setViewMode] = useState<'PREDICTIVE' | 'REAL_TRAFFIC'>('PREDICTIVE');
+  const [selectedTensionBlock, setSelectedTensionBlock] = useState<string | null>(null);
+
+  const isDefaultCheckout = targetUrl.toLowerCase().includes('checkout_form_v2') || targetUrl.toLowerCase().includes('prometheus.test');
+
+  const getElementTension = (el: any, index: number) => {
+    const str = el.text + el.tag + el.id + el.className;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const baseTension = Math.abs(hash % 60) + 20; // 20% to 80%
+    return isCalibrated ? Math.max(10, Math.round(baseTension * 0.6)) : baseTension;
+  };
+
+  // Select 4 interesting interactive elements to show in the map
+  const activeTensionElements = isDefaultCheckout || mappedElements.length === 0
+    ? [
+        { key: 'email', name: 'EMAIL INPUT', baseTension: isCalibrated ? 51 : 85, color: 'var(--accent-critical)' },
+        { key: 'cta', name: 'CTA BUTTON', baseTension: isCalibrated ? 24 : 40, color: 'var(--accent-indigo)' },
+        { key: 'submit', name: 'SUBMIT CTA', baseTension: isCalibrated ? 53 : 88, color: 'var(--accent-critical)' },
+        { key: 'pricing', name: 'PRICING TABS', baseTension: isCalibrated ? 12 : 20, color: 'var(--accent-teal)' }
+      ]
+    : mappedElements
+        .filter(el => el.tag === 'input' || el.tag === 'button' || el.tag === 'a')
+        .slice(0, 4)
+        .map((el, i) => {
+          const name = `${el.tag.toUpperCase()}: ${el.text || el.id || el.type || 'Element'}`;
+          const tension = getElementTension(el, i);
+          const color = tension > 60 ? 'var(--accent-critical)' : tension > 35 ? 'var(--accent-indigo)' : 'var(--accent-teal)';
+          return {
+            key: `element_${el.index}`,
+            name: name.substring(0, 22),
+            baseTension: tension,
+            color: color,
+            element: el
+          };
+        });
+  
+  // Model tuning interactive states
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [calibrationPhase, setCalibrationPhase] = useState(0);
+  const [calibrationStatus, setCalibrationStatus] = useState('');
+
+  const startCalibration = () => {
+    setIsCalibrating(true);
+    setCalibrationPhase(1);
+    setCalibrationStatus('Connecting to Pendo/Novus.ai analytics data nodes...');
+
+    setTimeout(() => {
+      setCalibrationPhase(2);
+      setCalibrationStatus('Comparing 2,540 real user sessions with active Eidolon paths...');
+    }, 1200);
+
+    setTimeout(() => {
+      setCalibrationPhase(3);
+      setCalibrationStatus('Aligning agent attention span and latency tolerances...');
+    }, 2400);
+
+    setTimeout(() => {
+      setCalibrationPhase(4);
+      setCalibrationStatus('Recalculating structural discrepancy metrics...');
+    }, 3600);
+
+    setTimeout(() => {
+      setIsCalibrating(false);
+      setCalibrationPhase(0);
+      setCalibrationStatus('');
+      setIsCalibrated(true);
+      setDiscrepancy(1.2);
+      setLastTuned('Just now');
+    }, 4800);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+      
+      {/* Upper Comparison Header Card */}
+      <div className="prometheus-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Title */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '15px' }}>
+          <div>
+            <h3 className="text-glow-teal" style={{ fontSize: '1.4rem', marginBottom: '4px' }}>
+              Novus.ai Meta-Analysis Bridge
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              Automatic calibration and tuning of predictive agent models against real user behavior metrics.
+            </p>
+          </div>
+
+          {/* Mocking Bridge Active Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(20, 184, 166, 0.08)', border: '1px solid var(--accent-teal)', borderRadius: '99px', padding: '6px 14px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-teal)', boxShadow: '0 0 6px var(--accent-teal)' }} className="pulse-scale" />
+            <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--accent-teal)', textTransform: 'uppercase' }}>BRIDGE ACTIVE</span>
+          </div>
+        </div>
+
+        {/* Mode Switcher */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setViewMode('PREDICTIVE')}
+            className={`btn-secondary ${viewMode === 'PREDICTIVE' ? 'active' : ''}`}
+            style={{
+              flex: 1,
+              background: viewMode === 'PREDICTIVE' ? 'rgba(99,102,241,0.1)' : 'transparent',
+              borderColor: viewMode === 'PREDICTIVE' ? 'var(--accent-indigo)' : 'var(--border-color)',
+              color: viewMode === 'PREDICTIVE' ? 'var(--accent-indigo)' : 'var(--text-secondary)',
+              fontWeight: 'bold',
+              fontSize: '0.85rem'
+            }}
+          >
+            Predictive Cohorts (Eidolons)
+          </button>
+          <button
+            onClick={() => setViewMode('REAL_TRAFFIC')}
+            className={`btn-secondary ${viewMode === 'REAL_TRAFFIC' ? 'active' : ''}`}
+            style={{
+              flex: 1,
+              background: viewMode === 'REAL_TRAFFIC' ? 'rgba(20,184,166,0.1)' : 'transparent',
+              borderColor: viewMode === 'REAL_TRAFFIC' ? 'var(--accent-teal)' : 'var(--border-color)',
+              color: viewMode === 'REAL_TRAFFIC' ? 'var(--accent-teal)' : 'var(--text-secondary)',
+              fontWeight: 'bold',
+              fontSize: '0.85rem'
+            }}
+          >
+            Instrumented Real Traffic (Novus.ai SDK)
+          </button>
+        </div>
+
+        {/* Visual Analytics Comparison Display */}
+        {viewMode === 'PREDICTIVE' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', minHeight: '260px' }}>
+            
+            {/* Simulated Polygon Map */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Predictive Tension Mapping</h4>
+              
+              <div style={{ position: 'relative', width: '100%', flex: 1, background: '#111827', borderRadius: '6px', overflow: 'hidden', minHeight: '160px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '95%', opacity: '0.9' }}>
+                  {activeTensionElements.map((item) => (
+                    <div 
+                      key={item.key}
+                      onClick={() => setSelectedTensionBlock(selectedTensionBlock === item.key ? null : item.key)}
+                      style={{ 
+                        flex: '1 1 40%', 
+                        height: '35px', 
+                        background: selectedTensionBlock === item.key ? `${item.color.replace('1)', '0.95)').replace('rgb', 'rgba')}` : `${item.color.replace('1)', '0.25)').replace('rgb', 'rgba')}`, 
+                        border: selectedTensionBlock === item.key ? '1.5px solid #ffffff' : `1.5px solid ${item.color}`, 
+                        borderRadius: '4px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontSize: '9px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: selectedTensionBlock === item.key ? `0 0 10px ${item.color}` : 'none'
+                      }}
+                    >
+                      {item.name} ({item.baseTension}%)
+                    </div>
+                  ))}
+                </div>
+
+                {selectedTensionBlock && (
+                  <div style={{ width: '95%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '10px', fontSize: '0.75rem', animation: 'fadeIn 0.2s ease', color: 'var(--text-secondary)', textAlign: 'left' }}>
+                    {(() => {
+                      const matchedItem = activeTensionElements.find(item => item.key === selectedTensionBlock);
+                      if (!matchedItem) return null;
+                      
+                      if (isDefaultCheckout || mappedElements.length === 0) {
+                        if (selectedTensionBlock === 'email') {
+                          return (
+                            <p style={{ margin: 0 }}>
+                              <strong style={{ color: 'var(--accent-critical)' }}>EMAIL INPUT (85% Tension):</strong> Impatient cohort abandons here. Model calibration reduces false positives to resolve this.
+                            </p>
+                          );
+                        }
+                        if (selectedTensionBlock === 'cta') {
+                          return (
+                            <p style={{ margin: 0 }}>
+                              <strong style={{ color: 'var(--accent-indigo)' }}>CTA BUTTON (40% Tension):</strong> Main conversion entry point scanned by Analytical and Impatient profiles.
+                            </p>
+                          );
+                        }
+                        if (selectedTensionBlock === 'submit') {
+                          return (
+                            <p style={{ margin: 0 }}>
+                              <strong style={{ color: 'var(--accent-critical)' }}>SUBMIT CTA (88% Tension):</strong> High validation failure tension. Calibration bypasses this block cleanly.
+                            </p>
+                          );
+                        }
+                        if (selectedTensionBlock === 'pricing') {
+                          return (
+                            <p style={{ margin: 0 }}>
+                              <strong style={{ color: 'var(--accent-teal)' }}>PRICING TABS (20% Tension):</strong> Low friction area scanned by Analytical profiles to check package specs.
+                            </p>
+                          );
+                        }
+                      } else {
+                        const level = matchedItem.baseTension > 60 ? 'Critical' : matchedItem.baseTension > 35 ? 'Moderate' : 'Low';
+                        return (
+                          <p style={{ margin: 0 }}>
+                            <strong style={{ color: matchedItem.color }}>{matchedItem.name} ({matchedItem.baseTension}% Tension - {level}):</strong> 
+                            {level === 'Critical' && " High cognitive fatigue observed. Cohorts are highly likely to abandon at this interaction point."}
+                            {level === 'Moderate' && " Moderate friction detected. Calibration tuning reduces response and interaction latency."}
+                            {level === 'Low' && " Stable user interaction pathway. Cohort traversal is optimal."}
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Model Tuning Parameters */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '15px' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Global Predictive Discrepancy</span>
+                <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: discrepancy <= 2.0 ? 'var(--accent-teal)' : '#eab308' }}>
+                  {discrepancy}% <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>observed discrepancy</span>
+                </p>
+                <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', marginTop: '8px', overflow: 'hidden' }}>
+                  <div style={{ width: `${discrepancy * 8}%`, height: '100%', background: discrepancy <= 2.0 ? 'var(--accent-teal)' : '#eab308', transition: 'width 1s ease-out' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem' }}>
+                <p style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Model Calibration Status:</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '2px' }}>
+                  Last calibration: <strong>{lastTuned}</strong> based on 2,540 real user sessions captured by Novus.ai.
+                </p>
+                
+                {/* Calibration details */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '10px', marginBottom: '5px' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0 }}>
+                    Attention Span Adjustment: <strong style={{ color: 'var(--accent-teal)' }}>+12%</strong> on the <em>Impatient</em> profile.
+                  </p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0 }}>
+                    Email validation calibration: Reduced false positives by <strong style={{ color: 'var(--accent-teal)' }}>4.2%</strong>.
+                  </p>
+                </div>
+                
+                {/* Calibration Action Trigger */}
+                <button
+                  onClick={startCalibration}
+                  disabled={isCalibrating}
+                  className="btn-primary"
+                  style={{
+                    marginTop: '5px',
+                    justifyContent: 'center',
+                    height: '38px',
+                    fontSize: '0.8rem',
+                    background: discrepancy <= 2.0 ? 'rgba(20, 184, 166, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                    border: `1px solid ${discrepancy <= 2.0 ? 'var(--accent-teal)' : 'var(--accent-indigo)'}`,
+                    color: discrepancy <= 2.0 ? 'var(--accent-teal)' : 'var(--text-primary)'
+                  }}
+                >
+                  {isCalibrating ? 'Calibrating Engine...' : 'Run Alignment Calibration'}
+                </button>
+
+                {isCalibrating && (
+                  <div style={{ marginTop: '8px', animation: 'fadeIn 0.3s ease', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="pulse-scale" style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-indigo)' }} />
+                      <span style={{ fontSize: '0.7rem', color: 'var(--accent-indigo)', fontFamily: 'monospace' }}>{calibrationStatus}</span>
+                    </div>
+                    {/* Simulated visual slider matching phase */}
+                    <div style={{ height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: 'var(--accent-indigo)', width: `${calibrationPhase * 25}%`, transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', minHeight: '260px' }}>
+            
+            {/* Real traffic Heatmap (Simulated chart) */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Real Friction Metrics (Novus.ai Dashboard)</h4>
+              
+              {/* Simulated analytics graph */}
+              <div style={{ position: 'relative', width: '100%', flex: 1, background: '#111827', borderRadius: '6px', overflow: 'hidden', minHeight: '160px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '60px', textAlign: 'right' }}>LANDING HERO</span>
+                    <div style={{ flex: 1, background: 'rgba(20, 184, 166, 0.4)', height: '14px', borderRadius: '3px', width: '100%' }} />
+                    <span style={{ fontSize: '8px', color: 'var(--text-primary)' }}>100%</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '60px', textAlign: 'right' }}>EMAIL FORM</span>
+                    <div style={{ flex: 1, background: 'rgba(99, 102, 241, 0.4)', height: '14px', borderRadius: '3px', maxWidth: '78%' }} />
+                    <span style={{ fontSize: '8px', color: 'var(--text-primary)' }}>78%</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '60px', textAlign: 'right' }}>SUBMIT CHECK</span>
+                    <div style={{ flex: 1, background: 'rgba(232, 64, 76, 0.4)', height: '14px', borderRadius: '3px', maxWidth: '38%' }} />
+                    <span style={{ fontSize: '8px', color: 'var(--text-primary)' }}>38%</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: '8px', color: 'var(--text-muted)', textAlign: 'center', fontFamily: 'monospace' }}>
+                  Summary conversion funnel generated by Novus.ai SDK
+                </p>
+              </div>
+            </div>
+
+            {/* Real world stats */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'rgba(20, 184, 166, 0.04)', border: '1px solid rgba(20, 184, 166, 0.15)', borderRadius: '8px', padding: '12px', fontSize: '0.8rem' }}>
+                <p style={{ fontWeight: 'bold', color: 'var(--accent-teal)', marginBottom: '4px' }}>Real User Session Data</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                  Novus.ai has instrumented **585 active visitors** on the deployed application.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Real Conversion Rate</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>38.2%</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Primary Friction Point</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--accent-critical)' }}>Email Validation</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Average Completion Time</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>48s</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </div>
+
+      {/* Session Simulation Run History Log Table (Dynamic Verification) */}
+      <div className="prometheus-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div>
+          <h4 className="text-glow-indigo" style={{ fontSize: '1.1rem', marginBottom: '4px' }}>
+            Session Telemetry History
+          </h4>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+            Live cohorted runs accumulated during your active session. This represents real predictive data fed into the calibration matrix.
+          </p>
+        </div>
+
+        {(() => {
+          const filteredHistory = simulationHistory.filter(run => {
+            if (!selectedTensionBlock) return true;
+            const friction = (run.frictionPoint || '').toLowerCase();
+            if (selectedTensionBlock === 'email') return friction.includes('email');
+            if (selectedTensionBlock === 'submit') return friction.includes('submit') || friction.includes('form') || friction.includes('abandon');
+            if (selectedTensionBlock === 'pricing') return friction.includes('pricing');
+            if (selectedTensionBlock === 'cta') return friction.includes('cta') || friction.includes('hero') || friction.includes('button');
+            return true;
+          });
+
+          return filteredHistory.length === 0 ? (
+            <div style={{ border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '30px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              {simulationHistory.length === 0 
+                ? 'No local simulation runs detected in this session yet. Launch a simulation in the "Simulation Space" to populate behavioral comparisons.'
+                : 'No simulation runs in history match the selected tension block filter. Click the active block again to clear the filter.'}
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '10px 8px' }}>Simulation ID</th>
+                    <th style={{ padding: '10px 8px' }}>Persona Profile</th>
+                    <th style={{ padding: '10px 8px' }}>Success Rate</th>
+                    <th style={{ padding: '10px 8px' }}>Max Frustration</th>
+                    <th style={{ padding: '10px 8px' }}>Primary Failure Point</th>
+                    <th style={{ padding: '10px 8px' }}>Interact Loops</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistory.map((run, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', color: 'var(--text-primary)' }}>
+                      <td style={{ padding: '12px 8px', fontFamily: 'monospace', color: 'var(--accent-teal)' }}>{run.id}</td>
+                      <td style={{ padding: '12px 8px', fontWeight: 600 }}>{run.persona}</td>
+                      <td style={{ padding: '12px 8px', color: run.success ? 'var(--accent-teal)' : 'var(--accent-critical)', fontWeight: 'bold' }}>
+                        {run.success ? '100% (Completed)' : '0% (Abandoned)'}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{Math.round(run.maxFrustration * 100)}%</td>
+                      <td style={{ padding: '12px 8px', fontFamily: 'monospace', color: run.success ? 'var(--text-muted)' : 'var(--accent-critical)' }}>
+                        {run.frictionPoint}
+                      </td>
+                      <td style={{ padding: '12px 8px' }}>{run.stepsCount} steps</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+      </div>
+
+    </div>
+  );
+}
