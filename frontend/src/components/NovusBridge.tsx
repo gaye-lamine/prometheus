@@ -30,6 +30,7 @@ export default function NovusBridge({
   const [viewMode, setViewMode] = useState<'PREDICTIVE' | 'REAL_TRAFFIC'>('PREDICTIVE');
   const [selectedTensionBlock, setSelectedTensionBlock] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
+  const [isSdkLoaded, setIsSdkLoaded] = useState(false);
 
   const isDefaultCheckout = targetUrl.toLowerCase().includes('checkout_form_v2') || targetUrl.toLowerCase().includes('prometheus.test');
 
@@ -54,7 +55,22 @@ export default function NovusBridge({
         }
       };
       window.addEventListener('pendo-sdk-call', handlePendoCall);
-      return () => window.removeEventListener('pendo-sdk-call', handlePendoCall);
+
+      const checkPendo = () => {
+        const pendoObj = (window as any).pendo;
+        if (pendoObj && pendoObj.version) {
+          setIsSdkLoaded(true);
+        } else {
+          setIsSdkLoaded(false);
+        }
+      };
+      checkPendo();
+      const interval = setInterval(checkPendo, 2000);
+
+      return () => {
+        window.removeEventListener('pendo-sdk-call', handlePendoCall);
+        clearInterval(interval);
+      };
     }
   }, []);
 
@@ -487,8 +503,19 @@ export default function NovusBridge({
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} className="pulse-scale" />
-              <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold', fontFamily: 'monospace' }}>LISTENING</span>
+              <span 
+                style={{ 
+                  width: '8px', 
+                  height: '8px', 
+                  borderRadius: '50%', 
+                  background: isSdkLoaded ? '#10b981' : '#ef4444', 
+                  boxShadow: isSdkLoaded ? '0 0 8px #10b981' : '0 0 8px #ef4444' 
+                }} 
+                className={isSdkLoaded ? "pulse-scale" : undefined} 
+              />
+              <span style={{ fontSize: '0.65rem', color: isSdkLoaded ? '#10b981' : '#ef4444', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                {isSdkLoaded ? 'CONNECTED' : 'BLOCKED / OFFLINE'}
+              </span>
             </div>
             
             <button
@@ -514,6 +541,20 @@ export default function NovusBridge({
             </button>
           </div>
         </div>
+
+        {!isSdkLoaded && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            borderRadius: '6px',
+            padding: '10px 15px',
+            fontSize: '0.75rem',
+            color: '#fca5a5',
+            lineHeight: '1.4'
+          }}>
+            <strong>Warning:</strong> The Novus.ai SDK (pendo.js) is not fully loaded. This is commonly caused by an ad blocker, privacy extension, or Brave Shield. Please disable your ad blocker for this site and refresh the page to enable real telemetry transmission.
+          </div>
+        )}
 
         <div 
           style={{ 
