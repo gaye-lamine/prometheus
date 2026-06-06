@@ -45,9 +45,9 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
   };
 
   const handleSimulate = () => {
-    // Fire Novus.ai analytics event to show the meta-analytical bridge
-    if (typeof window !== 'undefined' && (window as any).novus) {
-      (window as any).novus('track', 'simulation_initialized', {
+    // Fire Pendo/Novus.ai analytics event to show the meta-analytical bridge
+    if (typeof window !== 'undefined' && (window as any).pendo) {
+      (window as any).pendo.track('simulation_initialized', {
         persona_type: persona,
         attention_span: attentionSpan,
         technical_literacy: technicalLiteracy,

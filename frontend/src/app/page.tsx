@@ -23,6 +23,7 @@ export default function Home() {
   
   // Lifted DOM elements mapping state
   const [mappedElements, setMappedElements] = useState<any[]>([]);
+  const [trackedSims, setTrackedSims] = useState<string[]>([]);
 
   useEffect(() => {
     if (!pendoInitialized.current) {
@@ -65,6 +66,21 @@ export default function Home() {
       const latest = streamData[streamData.length - 1];
       const isFinished = latest.last_action === 'ABANDON' || streamData.length >= 5;
       if (isFinished) {
+        // Track the completion event once
+        if (!trackedSims.includes(simulationId)) {
+          setTrackedSims(prev => [...prev, simulationId]);
+          if (typeof window !== 'undefined' && (window as any).pendo) {
+            (window as any).pendo.track('simulation_completed', {
+              simulation_id: simulationId,
+              persona: selectedPersona,
+              steps_count: streamData.length,
+              success: latest.last_action !== 'ABANDON',
+              max_frustration: Math.max(...streamData.map(s => s.frustration_matrix)),
+              friction_point: latest.last_action === 'ABANDON' ? latest.current_step : 'None'
+            });
+          }
+        }
+
         setSimulationHistory(prev => {
           if (prev.some(run => run.id === simulationId)) {
             return prev.map(run => run.id === simulationId ? {
@@ -87,7 +103,7 @@ export default function Home() {
         });
       }
     }
-  }, [streamData, simulationId, selectedPersona]);
+  }, [streamData, simulationId, selectedPersona, trackedSims]);
 
   const handleLaunchSimulation = (config: PersonaConfig) => {
     const newSimId = 'sim_' + Math.floor(Math.random() * 9000 + 1000);

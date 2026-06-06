@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface NovusBridgeProps {
   simulationHistory: any[];
@@ -27,6 +27,60 @@ export default function NovusBridge({
 }: NovusBridgeProps) {
   const [viewMode, setViewMode] = useState<'PREDICTIVE' | 'REAL_TRAFFIC'>('PREDICTIVE');
   const [selectedTensionBlock, setSelectedTensionBlock] = useState<string | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setLogs((window as any).pendoLogs || []);
+
+      const handlePendoCall = (e: Event) => {
+        const customEvent = e as CustomEvent;
+        if (customEvent.detail) {
+          setLogs(prev => [...prev, customEvent.detail]);
+        }
+      };
+      window.addEventListener('pendo-sdk-call', handlePendoCall);
+      return () => window.removeEventListener('pendo-sdk-call', handlePendoCall);
+    }
+  }, []);
+
+  const getDynamicFunnel = () => {
+    if (isDefaultCheckout || mappedElements.length === 0) {
+      return [
+        { label: 'Entry: LANDING HERO', rate: 100, color: 'rgba(20, 184, 166, 0.4)' },
+        { label: 'Engagement: EMAIL FORM', rate: 78, color: 'rgba(99, 102, 241, 0.4)' },
+        { label: 'Action: SUBMIT CHECK', rate: 38, color: 'rgba(232, 64, 76, 0.4)' }
+      ];
+    }
+
+    const inputs = mappedElements.filter(el => el.tag === 'input' || el.tag === 'select' || el.tag === 'textarea');
+    const buttons = mappedElements.filter(el => el.tag === 'button' || el.type === 'submit' || (el.tag === 'a' && (el.className.includes('btn') || el.className.includes('button'))));
+    const links = mappedElements.filter(el => el.tag === 'a' && !el.className.includes('btn') && !el.className.includes('button'));
+
+    const entryEl = mappedElements.find(el => el.tag === 'h1' || el.tag === 'h2') || links[0] || mappedElements[0];
+    const entryLabel = entryEl ? `${entryEl.tag.toUpperCase()}: ${(entryEl.text || entryEl.id).substring(0, 15)}` : 'LANDING PAGE';
+
+    const engagementEl = inputs[0] || mappedElements.find(el => el.tag === 'select' || el.tag === 'textarea') || mappedElements[Math.min(1, mappedElements.length - 1)];
+    const engagementLabel = engagementEl ? `${engagementEl.tag.toUpperCase()}: ${(engagementEl.text || engagementEl.id || engagementEl.type || 'Field').substring(0, 15)}` : 'FORM INTERACT';
+
+    const conversionEl = buttons[0] || mappedElements.find(el => el.tag === 'a') || mappedElements[mappedElements.length - 1];
+    const conversionLabel = conversionEl ? `${conversionEl.tag.toUpperCase()}: ${(conversionEl.text || conversionEl.id || 'Action').substring(0, 15)}` : 'SUBMIT PROCESS';
+
+    const discrepancyFactor = isCalibrated ? 0.95 : 0.8;
+    const clickTension = conversionEl ? getElementTension(conversionEl, 2) : 50;
+    const inputTension = engagementEl ? getElementTension(engagementEl, 1) : 40;
+
+    const engagementRate = Math.round(95 - (inputTension * 0.2));
+    const conversionRate = Math.round(engagementRate * (1 - (clickTension / 100) * discrepancyFactor));
+
+    return [
+      { label: `Entry: ${entryLabel}`, rate: 100, color: 'rgba(20, 184, 166, 0.4)' },
+      { label: `Engagement: ${engagementLabel}`, rate: engagementRate, color: 'rgba(99, 102, 241, 0.4)' },
+      { label: `Action: ${conversionLabel}`, rate: conversionRate, color: 'rgba(232, 64, 76, 0.4)' }
+    ];
+  };
+
+  const funnelData = getDynamicFunnel();
 
   const isDefaultCheckout = targetUrl.toLowerCase().includes('checkout_form_v2') || targetUrl.toLowerCase().includes('prometheus.test');
 
@@ -96,6 +150,13 @@ export default function NovusBridge({
       setIsCalibrated(true);
       setDiscrepancy(1.2);
       setLastTuned('Just now');
+
+      if (typeof window !== 'undefined' && (window as any).pendo) {
+        (window as any).pendo.track('calibration_completed', {
+          discrepancy: 1.2,
+          sessions_evaluated: 2540
+        });
+      }
     }, 4800);
   };
 
@@ -314,21 +375,17 @@ export default function NovusBridge({
               {/* Simulated analytics graph */}
               <div style={{ position: 'relative', width: '100%', flex: 1, background: '#111827', borderRadius: '6px', overflow: 'hidden', minHeight: '160px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '60px', textAlign: 'right' }}>LANDING HERO</span>
-                    <div style={{ flex: 1, background: 'rgba(20, 184, 166, 0.4)', height: '14px', borderRadius: '3px', width: '100%' }} />
-                    <span style={{ fontSize: '8px', color: 'var(--text-primary)' }}>100%</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '60px', textAlign: 'right' }}>EMAIL FORM</span>
-                    <div style={{ flex: 1, background: 'rgba(99, 102, 241, 0.4)', height: '14px', borderRadius: '3px', maxWidth: '78%' }} />
-                    <span style={{ fontSize: '8px', color: 'var(--text-primary)' }}>78%</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '60px', textAlign: 'right' }}>SUBMIT CHECK</span>
-                    <div style={{ flex: 1, background: 'rgba(232, 64, 76, 0.4)', height: '14px', borderRadius: '3px', maxWidth: '38%' }} />
-                    <span style={{ fontSize: '8px', color: 'var(--text-primary)' }}>38%</span>
-                  </div>
+                  {funnelData.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '8px', color: 'var(--text-secondary)', width: '90px', textAlign: 'right', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        {item.label}
+                      </span>
+                      <div style={{ flex: 1, background: 'rgba(255, 255, 255, 0.03)', height: '14px', borderRadius: '3px', position: 'relative' }}>
+                        <div style={{ background: item.color, height: '100%', borderRadius: '3px', width: `${item.rate}%`, transition: 'width 0.5s ease-out' }} />
+                      </div>
+                      <span style={{ fontSize: '8px', color: 'var(--text-primary)', width: '30px' }}>{item.rate}%</span>
+                    </div>
+                  ))}
                 </div>
                 <p style={{ fontSize: '8px', color: 'var(--text-muted)', textAlign: 'center', fontFamily: 'monospace' }}>
                   Summary conversion funnel generated by Novus.ai SDK
@@ -348,21 +405,112 @@ export default function NovusBridge({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Real Conversion Rate</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>38.2%</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                    {funnelData[2] ? `${funnelData[2].rate}%` : '38.2%'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Primary Friction Point</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--accent-critical)' }}>Email Validation</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--accent-critical)' }}>
+                    {isDefaultCheckout || mappedElements.length === 0 ? 'Email Validation' : funnelData[1] ? funnelData[1].label.replace('Engagement: ', '').replace('INPUT:', '').replace('SELECT:', '').replace('TEXTAREA:', '').trim() : 'Interaction'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Average Completion Time</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>48s</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                    {isCalibrated ? '32s' : '48s'}
+                  </span>
                 </div>
               </div>
             </div>
 
           </div>
         )}
+      </div>
+
+      {/* Novus.ai SDK Live Diagnostic Console */}
+      <div className="prometheus-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+          <div>
+            <h4 className="text-glow-teal" style={{ fontSize: '1.1rem', marginBottom: '4px' }}>
+              Novus.ai SDK Live Diagnostic Console
+            </h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+              Real-time feed of analytics events transmitted through the Pendo agent bindings.
+            </p>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} className="pulse-scale" />
+              <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold', fontFamily: 'monospace' }}>LISTENING</span>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                setLogs([]);
+                if (typeof window !== 'undefined') {
+                  (window as any).pendoLogs = [];
+                }
+              }}
+              style={{
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                fontSize: '0.7rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Clear Console
+            </button>
+          </div>
+        </div>
+
+        <div 
+          style={{ 
+            background: '#0b0f19', 
+            border: '1px solid rgba(255,255,255,0.03)', 
+            borderRadius: '6px', 
+            padding: '15px', 
+            height: '200px', 
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '0.75rem',
+            lineHeight: '1.5',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            scrollbarColor: 'rgba(255, 255, 255, 0.1) rgba(0, 0, 0, 0.3)',
+            scrollbarWidth: 'thin'
+          }}
+        >
+          {logs.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', display: 'flex', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+              No SDK calls recorded. Launch a simulation or click calibration to dispatch events.
+            </div>
+          ) : (
+            logs.map((log, index) => {
+              const date = new Date(log.timestamp);
+              const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+              
+              return (
+                <div key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.01)', paddingBottom: '4px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ color: '#0ea5e9' }}>[{timeStr}]</span>
+                  <div style={{ flex: 1, wordBreak: 'break-all' }}>
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>pendo.{log.method}</span>
+                    <span style={{ color: 'var(--text-primary)' }}>
+                      ({log.args.map((arg: any) => typeof arg === 'string' ? `"${arg}"` : JSON.stringify(arg)).join(', ')})
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Session Simulation Run History Log Table (Dynamic Verification) */}
