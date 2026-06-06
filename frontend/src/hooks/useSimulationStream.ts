@@ -41,8 +41,9 @@ export function useSimulationStream() {
     setIsStreaming(true);
     eventsReceivedRef.current = 0;
 
-    // 2. Direct connect to Uvicorn using Next.js rewrite proxy (relative path to bypass Mixed Content restrictions)
-    const url = `/api/simulations/${simulationId}/stream?persona=${persona}&calibrated=${calibrated}`;
+    // 2. Direct connect to Uvicorn using the exact parameters, dynamic hostname matching client origin or NEXT_PUBLIC_API_URL
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}:8000`;
+    const url = `${apiBase}/api/simulations/${simulationId}/stream?persona=${persona}&calibrated=${calibrated}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
