@@ -1,0 +1,29 @@
+name: Deploy Backend to VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: 72.60.213.116
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            mkdir -p /root/prometheus-backend
+            cd /root/prometheus-backend
+            # Pull latest code or sync files
+            # Restarts uvicorn server in background
+            pkill -f uvicorn || true
+            nohup venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
