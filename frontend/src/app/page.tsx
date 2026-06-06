@@ -30,9 +30,17 @@ export default function Home() {
   useEffect(() => {
     if (!pendoInitialized.current) {
       pendoInitialized.current = true;
+      let visitorId = '';
+      if (typeof window !== 'undefined') {
+        visitorId = localStorage.getItem('prometheus_visitor_id') || '';
+        if (!visitorId) {
+          visitorId = 'usr_' + Math.random().toString(36).substring(2, 11);
+          localStorage.setItem('prometheus_visitor_id', visitorId);
+        }
+      }
       pendo.initialize({
         visitor: {
-          id: ''
+          id: visitorId
         }
       });
     }
