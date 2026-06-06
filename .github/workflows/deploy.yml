@@ -24,6 +24,7 @@ jobs:
             mkdir -p /root/prometheus-backend
             cd /root/prometheus-backend
             # Pull latest code or sync files
-            # Restarts uvicorn server in background
-            pkill -f uvicorn || true
-            nohup venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 </dev/null &
+            # Rebuilds and restarts the backend container
+            docker compose down
+            docker compose build
+            docker compose up -d
