@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 
+declare const pendo: any;
+
 export interface TelemetryState {
   agent_id: string;
   persona: 'IMPATIENT' | 'ANALYTICAL' | 'FRUSTRATED';
@@ -45,12 +47,31 @@ export function useSimulationStream() {
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
+    if (typeof pendo !== 'undefined') {
+      pendo.track('sse_stream_connected', {
+        simulation_id: simulationId,
+        persona: persona,
+        calibrated: calibrated,
+        stream_url: url
+      });
+    }
+
     eventSource.addEventListener('state_mutation', (event) => {
       try {
         eventsReceivedRef.current += 1;
         const payload: TelemetryState = JSON.parse(event.data);
         setStreamData((prev) => {
           if (payload.last_action === 'ABANDON') {
+            if (typeof pendo !== 'undefined') {
+              pendo.track('agent_abandoned_flow', {
+                agent_id: payload.agent_id,
+                persona: payload.persona,
+                abandoned_at_step: payload.current_step,
+                frustration_level: payload.frustration_matrix,
+                cognitive_log: (payload.cognitive_log || '').substring(0, 200),
+                simulation_id: simulationId
+              });
+            }
             setTimeout(() => stopStream(), 100);
           }
           return [...prev, payload];
@@ -71,6 +92,13 @@ export function useSimulationStream() {
         stopStream();
       } else {
         console.error("SSE Telemetry Connection Failure:", err);
+        if (typeof pendo !== 'undefined') {
+          pendo.track('sse_stream_error', {
+            simulation_id: simulationId,
+            events_received_count: eventsReceivedRef.current,
+            error_type: 'connection_failure'
+          });
+        }
         stopStream();
       }
     };

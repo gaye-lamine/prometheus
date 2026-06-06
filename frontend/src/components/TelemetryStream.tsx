@@ -3,6 +3,9 @@
 import React, { useEffect, useRef } from 'react';
 import { TelemetryState } from '../hooks/useSimulationStream';
 
+declare const pendo: any;
+const trackedCriticalFrustration = new Set<string>();
+
 interface TelemetryStreamProps {
   streamData: TelemetryState[];
   isStreaming: boolean;
@@ -30,6 +33,20 @@ export default function TelemetryStream({ streamData, isStreaming }: TelemetrySt
   } else if (frustration > 0.75) {
     gaugeColor = 'var(--accent-critical)';
     isFrustrationCritical = true;
+
+    if (latestState) {
+      const dedupKey = `${latestState.agent_id}_${latestState.persona}`;
+      if (!trackedCriticalFrustration.has(dedupKey) && typeof pendo !== 'undefined') {
+        trackedCriticalFrustration.add(dedupKey);
+        pendo.track('frustration_critical_threshold', {
+          frustration_level: frustration,
+          persona: latestState.persona,
+          current_step: latestState.current_step,
+          agent_id: latestState.agent_id,
+          simulation_id: latestState.agent_id
+        });
+      }
+    }
   }
 
   return (

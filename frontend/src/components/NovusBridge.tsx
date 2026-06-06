@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 
+declare const pendo: any;
+
 interface NovusBridgeProps {
   simulationHistory: any[];
   isCalibrated: boolean;
@@ -124,6 +126,15 @@ export default function NovusBridge({
   const [calibrationStatus, setCalibrationStatus] = useState('');
 
   const startCalibration = () => {
+    if (typeof pendo !== 'undefined') {
+      pendo.track('calibration_started', {
+        current_discrepancy: discrepancy,
+        is_already_calibrated: isCalibrated,
+        simulation_history_count: simulationHistory.length
+      });
+    }
+
+    const calibrationStartTime = Date.now();
     setIsCalibrating(true);
     setCalibrationPhase(1);
     setCalibrationStatus('Connecting to Pendo/Novus.ai analytics data nodes...');
@@ -151,10 +162,12 @@ export default function NovusBridge({
       setDiscrepancy(1.2);
       setLastTuned('Just now');
 
-      if (typeof window !== 'undefined' && (window as any).pendo) {
-        (window as any).pendo.track('calibration_completed', {
-          discrepancy: 1.2,
-          sessions_evaluated: 2540
+      if (typeof pendo !== 'undefined') {
+        pendo.track('calibration_completed', {
+          previous_discrepancy: discrepancy,
+          new_discrepancy: 1.2,
+          calibration_duration_ms: Date.now() - calibrationStartTime,
+          phases_completed: 4
         });
       }
     }, 4800);
@@ -186,7 +199,17 @@ export default function NovusBridge({
         {/* Mode Switcher */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
-            onClick={() => setViewMode('PREDICTIVE')}
+            onClick={() => {
+              const prev = viewMode;
+              setViewMode('PREDICTIVE');
+              if (prev !== 'PREDICTIVE' && typeof pendo !== 'undefined') {
+                pendo.track('novus_bridge_view_switched', {
+                  new_view_mode: 'PREDICTIVE',
+                  previous_view_mode: prev,
+                  simulation_history_count: simulationHistory.length
+                });
+              }
+            }}
             className={`btn-secondary ${viewMode === 'PREDICTIVE' ? 'active' : ''}`}
             style={{
               flex: 1,
@@ -200,7 +223,17 @@ export default function NovusBridge({
             Predictive Cohorts (Eidolons)
           </button>
           <button
-            onClick={() => setViewMode('REAL_TRAFFIC')}
+            onClick={() => {
+              const prev = viewMode;
+              setViewMode('REAL_TRAFFIC');
+              if (prev !== 'REAL_TRAFFIC' && typeof pendo !== 'undefined') {
+                pendo.track('novus_bridge_view_switched', {
+                  new_view_mode: 'REAL_TRAFFIC',
+                  previous_view_mode: prev,
+                  simulation_history_count: simulationHistory.length
+                });
+              }
+            }}
             className={`btn-secondary ${viewMode === 'REAL_TRAFFIC' ? 'active' : ''}`}
             style={{
               flex: 1,
@@ -226,9 +259,21 @@ export default function NovusBridge({
               <div style={{ position: 'relative', width: '100%', flex: 1, background: '#111827', borderRadius: '6px', overflow: 'hidden', minHeight: '160px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '95%', opacity: '0.9' }}>
                   {activeTensionElements.map((item) => (
-                    <div 
+                    <div
                       key={item.key}
-                      onClick={() => setSelectedTensionBlock(selectedTensionBlock === item.key ? null : item.key)}
+                      onClick={() => {
+                        const newSelection = selectedTensionBlock === item.key ? null : item.key;
+                        setSelectedTensionBlock(newSelection);
+                        if (newSelection !== null && typeof pendo !== 'undefined') {
+                          pendo.track('tension_block_selected', {
+                            block_key: item.key,
+                            block_name: item.name,
+                            tension_percentage: item.baseTension,
+                            is_calibrated: isCalibrated,
+                            filtered_history_count: simulationHistory.length
+                          });
+                        }
+                      }}
                       style={{ 
                         flex: '1 1 40%', 
                         height: '35px', 

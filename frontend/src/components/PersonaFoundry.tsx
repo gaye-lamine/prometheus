@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 
+declare const pendo: any;
+
 export interface PersonaConfig {
   persona: 'IMPATIENT' | 'ANALYTICAL' | 'FRUSTRATED';
   attentionSpan: number;
@@ -29,18 +31,33 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
   const handlePersonaChange = (type: 'IMPATIENT' | 'ANALYTICAL' | 'FRUSTRATED') => {
     setPersona(type);
     // Auto-adjust parameters to match realistic persona profiles
+    let autoAttentionSpan: number;
+    let autoTechnicalLiteracy: number;
+    let autoLatencyTolerance: number;
     if (type === 'IMPATIENT') {
-      setAttentionSpan(25);
-      setTechnicalLiteracy(55);
-      setLatencyTolerance(20);
+      autoAttentionSpan = 25;
+      autoTechnicalLiteracy = 55;
+      autoLatencyTolerance = 20;
     } else if (type === 'ANALYTICAL') {
-      setAttentionSpan(90);
-      setTechnicalLiteracy(95);
-      setLatencyTolerance(75);
+      autoAttentionSpan = 90;
+      autoTechnicalLiteracy = 95;
+      autoLatencyTolerance = 75;
     } else {
-      setAttentionSpan(45);
-      setTechnicalLiteracy(40);
-      setLatencyTolerance(35);
+      autoAttentionSpan = 45;
+      autoTechnicalLiteracy = 40;
+      autoLatencyTolerance = 35;
+    }
+    setAttentionSpan(autoAttentionSpan);
+    setTechnicalLiteracy(autoTechnicalLiteracy);
+    setLatencyTolerance(autoLatencyTolerance);
+
+    if (typeof pendo !== 'undefined') {
+      pendo.track('persona_profile_configured', {
+        persona_type: type,
+        auto_attention_span: autoAttentionSpan,
+        auto_technical_literacy: autoTechnicalLiteracy,
+        auto_latency_tolerance: autoLatencyTolerance
+      });
     }
   };
 
@@ -53,6 +70,18 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
         technical_literacy: technicalLiteracy,
         network_profile: networkProfile,
         is_mobile: isMobile
+      });
+    }
+
+    if (typeof pendo !== 'undefined') {
+      pendo.track('simulation_initialized', {
+        persona_type: persona,
+        attention_span: attentionSpan,
+        technical_literacy: technicalLiteracy,
+        latency_tolerance: latencyTolerance,
+        network_profile: networkProfile,
+        is_mobile: isMobile,
+        target_url: targetUrl
       });
     }
 

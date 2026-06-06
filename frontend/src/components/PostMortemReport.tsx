@@ -1,7 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TelemetryState } from '../hooks/useSimulationStream';
+
+declare const pendo: any;
+const trackedReportSimulations = new Set<string>();
 
 interface PostMortemReportProps {
   streamData: TelemetryState[];
@@ -58,6 +61,23 @@ export default function PostMortemReport({ streamData, persona }: PostMortemRepo
     grade = 'F';
     gradeColor = 'var(--accent-critical)';
   }
+
+  // Derive a stable key for dedup from the stream data
+  const reportKey = `${persona}_${streamData.length}_${latestState.agent_id}`;
+  useEffect(() => {
+    if (!trackedReportSimulations.has(reportKey) && typeof pendo !== 'undefined') {
+      trackedReportSimulations.add(reportKey);
+      pendo.track('post_mortem_report_generated', {
+        persona: persona,
+        ux_debt_score: uxDebtScore,
+        grade: grade,
+        grade_color: gradeColor,
+        success_rate: successRate,
+        max_frustration: maxFrustration,
+        interaction_steps: streamData.length
+      });
+    }
+  }, [reportKey]);
 
   return (
     <div className="prometheus-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeIn 0.5s ease-out', flexShrink: 0 }}>
