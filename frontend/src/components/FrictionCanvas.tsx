@@ -107,8 +107,9 @@ export default function FrictionCanvas({
     if (match) {
       const iframe = document.querySelector('iframe');
       if (iframe && iframe.contentWindow) {
+        const cw = iframe.contentWindow;
         if (latestState.last_action === 'SCROLL' || latestState.current_step.includes('feature') || latestState.current_step.includes('terms')) {
-          iframe.contentWindow.postMessage({
+          cw.postMessage({
             type: 'PROMETHEUS_ACTION',
             action: 'SCROLL_TO_ELEMENT',
             index: match.index
@@ -117,25 +118,26 @@ export default function FrictionCanvas({
 
         setTimeout(() => {
           if (latestState.last_action === 'CLICK') {
-            iframe.contentWindow.postMessage({
+            cw.postMessage({
               type: 'PROMETHEUS_ACTION',
               action: 'CLICK',
               index: match.index
             }, '*');
           } else if (latestState.last_action === 'HOVER') {
-            iframe.contentWindow.postMessage({
+            cw.postMessage({
               type: 'PROMETHEUS_ACTION',
               action: 'HOVER',
               index: match.index
             }, '*');
-          } else if (latestState.current_step.includes('email') && latestState.last_action === 'HOVER') {
-            const emailVal = isCalibrated ? 'success@prometheus.ai' : 'invalid-email-address';
-            iframe.contentWindow.postMessage({
-              type: 'PROMETHEUS_ACTION',
-              action: 'TYPE',
-              index: match.index,
-              value: emailVal
-            }, '*');
+            if (latestState.current_step.includes('email')) {
+              const emailVal = isCalibrated ? 'success@prometheus.ai' : 'invalid-email-address';
+              cw.postMessage({
+                type: 'PROMETHEUS_ACTION',
+                action: 'TYPE',
+                index: match.index,
+                value: emailVal
+              }, '*');
+            }
           }
         }, 300);
       }
@@ -270,8 +272,8 @@ export default function FrictionCanvas({
   }, [streamData, latestState, isCalibrated]);
 
   // Dynamically resolve client-side proxy address
-  const clientHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-  const proxySrc = `http://${clientHost}:8000/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}:8000`;
+  const proxySrc = `${apiBase}/api/proxy?url=${encodeURIComponent(targetUrl)}`;
 
   return (
     <div className="prometheus-card" style={{ padding: '0', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', background: '#0e1321' }}>
