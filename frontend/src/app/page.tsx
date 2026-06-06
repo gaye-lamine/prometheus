@@ -8,6 +8,8 @@ import PostMortemReport from '../components/PostMortemReport';
 import NovusBridge from '../components/NovusBridge';
 import { useSimulationStream } from '../hooks/useSimulationStream';
 
+const pendoInitialized = { current: false };
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'SIMULATION' | 'NOVUS_BRIDGE'>('SIMULATION');
   const [simulationId, setSimulationId] = useState<string>('sim_4892');
@@ -21,6 +23,17 @@ export default function Home() {
   
   // Lifted DOM elements mapping state
   const [mappedElements, setMappedElements] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!pendoInitialized.current) {
+      pendoInitialized.current = true;
+      pendo.initialize({
+        visitor: {
+          id: ''
+        }
+      });
+    }
+  }, []);
 
   const {
     streamData,

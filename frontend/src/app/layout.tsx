@@ -32,20 +32,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
       <head>
-        {/* CRITICAL HACKATHON COMPLIANCE: NOVUS.AI INSTRUMENTATION BRIDGES */}
         <script
-          id="novus-analytics-script"
           dangerouslySetInnerHTML={{
             __html: `
-              (function(n,o,v,u,s){
-                n[s]=n[s]||function(){(n[s].q=n[s].q||[]).push(arguments)},n[s].l=1*new Date();
-                var a=o.createElement(v),m=o.getElementsByTagName(v)[0];
-                a.async=1;a.src=u;m.parentNode.insertBefore(a,m)
-              })(window,document,'script','https://novus.pendo.io/analytics.js','novus');
-              
-              // Registering project with WPD26 target workspace ID
-              novus('init', 'wpd26-prometheus-simulation-bridge');
-              novus('track', 'pageview');
+(function(apiKey){
+    (function(p,e,n,d,o){var v,w,x,y,z;o=p[d]=p[d]||{};o._q=o._q||[];
+    v=['initialize','identify','updateOptions','pageLoad','track', 'trackAgent'];for(w=0,x=v.length;w<x;++w)(function(m){
+    o[m]=o[m]||function(){o._q[m===v[0]?'unshift':'push']([m].concat([].slice.call(arguments,0)));};})(v[w]);
+    y=e.createElement(n);y.async=!0;y.src='https://cdn.pendo.io/agent/static/'+apiKey+'/pendo.js';
+    z=e.getElementsByTagName(n)[0];z.parentNode.insertBefore(y,z);})(window,document,'script','pendo');
+})('86657d61-c85f-49e8-8f63-cc68015948ba');
             `,
           }}
         />
