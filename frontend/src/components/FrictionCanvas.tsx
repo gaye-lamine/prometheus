@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { TelemetryState } from '../hooks/useSimulationStream';
 
+declare const pendo: any;
+
 interface FrictionCanvasProps {
   streamData: TelemetryState[];
   isStreaming: boolean;
@@ -185,6 +187,14 @@ export default function FrictionCanvas({
     if (step === 'submit_button') {
       if (action === 'CLICK') {
         setIsSubmitting(true);
+        if (typeof pendo !== 'undefined') {
+          pendo.track('checkout_form_submitted', {
+            email_value_present: emailValue.length > 0,
+            card_value_present: cardValue.length > 0,
+            is_calibrated: isCalibrated,
+            triggered_by: 'simulation_agent'
+          });
+        }
         const timer = setTimeout(() => {
           setIsSubmitting(false);
           if (isCalibrated) {
@@ -193,8 +203,25 @@ export default function FrictionCanvas({
             setCardValue('4242 4242 4242 4242');
             setExpiryValue('12/28');
             setCvcValue('123');
+            if (typeof pendo !== 'undefined') {
+              pendo.track('checkout_form_success', {
+                persona: latestState?.persona,
+                is_calibrated: isCalibrated,
+                steps_to_success: streamData.length,
+                email_value_type: 'calibrated'
+              });
+            }
           } else {
             setShowEmailError(true);
+            if (typeof pendo !== 'undefined') {
+              pendo.track('checkout_form_validation_failed', {
+                email_value: emailValue.substring(0, 50),
+                error_message: 'Company domain required or invalid syntax',
+                persona: latestState?.persona,
+                is_calibrated: isCalibrated,
+                frustration_at_failure: latestState?.frustration_matrix
+              });
+            }
           }
         }, 800);
         return () => clearTimeout(timer);
@@ -206,6 +233,14 @@ export default function FrictionCanvas({
       if (action === 'CLICK') {
         const timer = setTimeout(() => {
           setCookieBannerDismissed(true);
+          if (typeof pendo !== 'undefined') {
+            pendo.track('cookie_banner_dismissed', {
+              dismiss_action: 'simulation_agent',
+              persona: latestState?.persona,
+              frustration_at_dismissal: latestState?.frustration_matrix,
+              simulation_id: latestState?.agent_id
+            });
+          }
         }, 500);
         return () => clearTimeout(timer);
       }
@@ -472,12 +507,33 @@ export default function FrictionCanvas({
               <button
                 onClick={() => {
                   setIsSubmitting(true);
+                  if (typeof pendo !== 'undefined') {
+                    pendo.track('checkout_form_submitted', {
+                      email_value_present: emailValue.length > 0,
+                      card_value_present: cardValue.length > 0,
+                      is_calibrated: isCalibrated,
+                      triggered_by: 'user'
+                    });
+                  }
                   setTimeout(() => {
                     setIsSubmitting(false);
                     if (emailValue.includes('company.domain')) {
                       setShowEmailError(true);
+                      if (typeof pendo !== 'undefined') {
+                        pendo.track('checkout_form_validation_failed', {
+                          email_value: emailValue.substring(0, 50),
+                          error_message: 'Company domain required or invalid syntax',
+                          is_calibrated: isCalibrated
+                        });
+                      }
                     } else {
                       setIsSubmitSuccess(true);
+                      if (typeof pendo !== 'undefined') {
+                        pendo.track('checkout_form_success', {
+                          is_calibrated: isCalibrated,
+                          email_value_type: emailValue.includes('@') ? 'valid_email' : 'other'
+                        });
+                      }
                     }
                   }, 1000);
                 }}
@@ -622,14 +678,32 @@ export default function FrictionCanvas({
               We use cookies to optimize your experience, track analytics performance with Novus, and serve promotional offers tailored to your Eidolons.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button 
-                onClick={() => setCookieBannerDismissed(true)}
+              <button
+                onClick={() => {
+                  setCookieBannerDismissed(true);
+                  if (typeof pendo !== 'undefined') {
+                    pendo.track('cookie_banner_dismissed', {
+                      dismiss_action: 'decline',
+                      persona: latestState?.persona,
+                      frustration_at_dismissal: latestState?.frustration_matrix
+                    });
+                  }
+                }}
                 style={{ background: '#374151', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}
               >
                 Decline
               </button>
-              <button 
-                onClick={() => setCookieBannerDismissed(true)}
+              <button
+                onClick={() => {
+                  setCookieBannerDismissed(true);
+                  if (typeof pendo !== 'undefined') {
+                    pendo.track('cookie_banner_dismissed', {
+                      dismiss_action: 'accept',
+                      persona: latestState?.persona,
+                      frustration_at_dismissal: latestState?.frustration_matrix
+                    });
+                  }
+                }}
                 style={{ background: '#4f46e5', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
               >
                 Accept All

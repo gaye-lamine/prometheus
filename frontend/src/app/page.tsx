@@ -8,7 +8,10 @@ import PostMortemReport from '../components/PostMortemReport';
 import NovusBridge from '../components/NovusBridge';
 import { useSimulationStream } from '../hooks/useSimulationStream';
 
+declare const pendo: any;
+
 const pendoInitialized = { current: false };
+const trackedCompletedSimulations = new Set<string>();
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'SIMULATION' | 'NOVUS_BRIDGE'>('SIMULATION');
@@ -54,6 +57,14 @@ export default function Home() {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'PROMETHEUS_DOM_MAP') {
         setMappedElements(event.data.elements);
+        if (typeof pendo !== 'undefined') {
+          const elements = event.data.elements || [];
+          pendo.track('dom_mapping_received', {
+            element_count: elements.length,
+            target_url: targetUrl,
+            interactive_element_count: elements.filter((el: any) => el.tag === 'input' || el.tag === 'button' || el.tag === 'a').length
+          });
+        }
       }
     };
     window.addEventListener('message', handleMessage);
@@ -65,6 +76,18 @@ export default function Home() {
       const latest = streamData[streamData.length - 1];
       const isFinished = latest.last_action === 'ABANDON' || streamData.length >= 5;
       if (isFinished) {
+        if (typeof pendo !== 'undefined' && !trackedCompletedSimulations.has(simulationId)) {
+          trackedCompletedSimulations.add(simulationId);
+          pendo.track('simulation_completed', {
+            simulation_id: simulationId,
+            persona: selectedPersona,
+            success: latest.last_action !== 'ABANDON',
+            max_frustration: Math.max(...streamData.map(s => s.frustration_matrix)),
+            friction_point: latest.last_action === 'ABANDON' ? latest.current_step : 'None',
+            steps_count: streamData.length,
+            is_calibrated: isCalibrated
+          });
+        }
         setSimulationHistory(prev => {
           if (prev.some(run => run.id === simulationId)) {
             return prev.map(run => run.id === simulationId ? {
@@ -94,7 +117,16 @@ export default function Home() {
     setSimulationId(newSimId);
     setSelectedPersona(config.persona);
     setTargetUrl(config.targetUrl);
-    
+
+    if (typeof pendo !== 'undefined') {
+      pendo.track('simulation_launched', {
+        simulation_id: newSimId,
+        persona: config.persona,
+        is_calibrated: isCalibrated,
+        target_url: config.targetUrl
+      });
+    }
+
     // Trigger direct connection immediately using new parameters with calibration state
     startStream(newSimId, config.persona, isCalibrated);
   };
