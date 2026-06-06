@@ -58,7 +58,7 @@ export default function NovusBridge({
 
       const checkPendo = () => {
         const pendoObj = (window as any).pendo;
-        if (pendoObj && pendoObj.version) {
+        if (pendoObj && typeof pendoObj.validateInstall === 'function') {
           setIsSdkLoaded(true);
         } else {
           setIsSdkLoaded(false);
