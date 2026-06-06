@@ -152,15 +152,17 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
             <span style={{ color: 'var(--text-secondary)' }}>Attention Span</span>
             <span style={{ color: 'var(--accent-teal)', fontWeight: 'bold' }}>{attentionSpan}%</span>
           </div>
-          <input
-            id="slider-attention-span"
-            type="range"
-            min="10"
-            max="100"
-            value={attentionSpan}
-            onChange={(e) => setAttentionSpan(Number(e.target.value))}
-            className="prometheus-slider"
-          />
+          <div>
+            <input
+              id="slider-attention-span"
+              type="range"
+              min="10"
+              max="100"
+              value={attentionSpan}
+              onChange={(e) => setAttentionSpan(Number(e.target.value))}
+              className="prometheus-slider"
+            />
+          </div>
         </div>
 
         <div>
@@ -168,15 +170,17 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
             <span style={{ color: 'var(--text-secondary)' }}>Technical Literacy</span>
             <span style={{ color: 'var(--accent-teal)', fontWeight: 'bold' }}>{technicalLiteracy}%</span>
           </div>
-          <input
-            id="slider-technical-literacy"
-            type="range"
-            min="10"
-            max="100"
-            value={technicalLiteracy}
-            onChange={(e) => setTechnicalLiteracy(Number(e.target.value))}
-            className="prometheus-slider"
-          />
+          <div>
+            <input
+              id="slider-technical-literacy"
+              type="range"
+              min="10"
+              max="100"
+              value={technicalLiteracy}
+              onChange={(e) => setTechnicalLiteracy(Number(e.target.value))}
+              className="prometheus-slider"
+            />
+          </div>
         </div>
 
         <div>
@@ -184,15 +188,17 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
             <span style={{ color: 'var(--text-secondary)' }}>Latency Tolerance</span>
             <span style={{ color: 'var(--accent-teal)', fontWeight: 'bold' }}>{latencyTolerance}%</span>
           </div>
-          <input
-            id="slider-latency-tolerance"
-            type="range"
-            min="10"
-            max="100"
-            value={latencyTolerance}
-            onChange={(e) => setLatencyTolerance(Number(e.target.value))}
-            className="prometheus-slider"
-          />
+          <div>
+            <input
+              id="slider-latency-tolerance"
+              type="range"
+              min="10"
+              max="100"
+              value={latencyTolerance}
+              onChange={(e) => setLatencyTolerance(Number(e.target.value))}
+              className="prometheus-slider"
+            />
+          </div>
         </div>
       </div>
 
