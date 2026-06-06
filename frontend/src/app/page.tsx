@@ -283,11 +283,10 @@ export default function Home() {
       {/* Background DOM mapping iframe proxy (runs only when needed to map custom URL elements in bridge tab) */}
       {(() => {
         const isDefaultCheckout = targetUrl.toLowerCase().includes('checkout_form_v2') || targetUrl.toLowerCase().includes('prometheus.test');
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}:8000`;
         if (!isDefaultCheckout && mappedElements.length === 0) {
           return (
             <iframe
-              src={`${apiBase}/api/proxy?url=${encodeURIComponent(targetUrl)}`}
+              src={`/api/proxy?url=${encodeURIComponent(targetUrl)}`}
               style={{ position: 'absolute', width: 0, height: 0, opacity: 0, border: 'none', pointerEvents: 'none' }}
               title="Background DOM Scanner Proxy"
             />

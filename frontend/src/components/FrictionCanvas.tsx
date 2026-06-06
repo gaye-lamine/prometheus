@@ -271,9 +271,8 @@ export default function FrictionCanvas({
 
   }, [streamData, latestState, isCalibrated]);
 
-  // Dynamically resolve client-side proxy address
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}:8000`;
-  const proxySrc = `${apiBase}/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+  // Dynamically resolve client-side proxy address (using relative paths to bypass Mixed Content restrictions)
+  const proxySrc = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
 
   return (
     <div className="prometheus-card" style={{ padding: '0', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', background: '#0e1321' }}>
