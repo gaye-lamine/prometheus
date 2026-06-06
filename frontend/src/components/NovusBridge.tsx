@@ -215,6 +215,7 @@ export default function NovusBridge({
         {/* Mode Switcher */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
+            id="btn-predictive-cohorts"
             onClick={() => {
               const prev = viewMode;
               setViewMode('PREDICTIVE');
@@ -239,6 +240,7 @@ export default function NovusBridge({
             Predictive Cohorts (Eidolons)
           </button>
           <button
+            id="btn-real-traffic"
             onClick={() => {
               const prev = viewMode;
               setViewMode('REAL_TRAFFIC');
@@ -394,6 +396,7 @@ export default function NovusBridge({
                 
                 {/* Calibration Action Trigger */}
                 <button
+                  id="btn-run-calibration"
                   onClick={startCalibration}
                   disabled={isCalibrating}
                   className="btn-primary"

@@ -41,6 +41,9 @@ export default function Home() {
       pendo.initialize({
         visitor: {
           id: visitorId
+        },
+        account: {
+          id: 'acc_prometheus'
         }
       });
     }
@@ -172,12 +175,14 @@ export default function Home() {
         {/* Tab Controls */}
         <nav style={{ display: 'flex', gap: '5px' }}>
           <button
+            id="tab-simulation-space"
             onClick={() => setActiveTab('SIMULATION')}
             className={`tab-button ${activeTab === 'SIMULATION' ? 'active' : ''}`}
           >
             Simulation Space
           </button>
           <button
+            id="tab-novus-bridge"
             onClick={() => setActiveTab('NOVUS_BRIDGE')}
             className={`tab-button ${activeTab === 'NOVUS_BRIDGE' ? 'active' : ''}`}
           >

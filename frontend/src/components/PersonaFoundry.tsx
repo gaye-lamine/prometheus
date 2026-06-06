@@ -116,6 +116,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
           {(['ANALYTICAL', 'IMPATIENT', 'FRUSTRATED'] as const).map((type) => (
             <button
               key={type}
+              id={`persona-${type.toLowerCase()}`}
               type="button"
               onClick={() => handlePersonaChange(type)}
               style={{
@@ -152,6 +153,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
             <span style={{ color: 'var(--accent-teal)', fontWeight: 'bold' }}>{attentionSpan}%</span>
           </div>
           <input
+            id="slider-attention-span"
             type="range"
             min="10"
             max="100"
@@ -167,6 +169,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
             <span style={{ color: 'var(--accent-teal)', fontWeight: 'bold' }}>{technicalLiteracy}%</span>
           </div>
           <input
+            id="slider-technical-literacy"
             type="range"
             min="10"
             max="100"
@@ -182,6 +185,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
             <span style={{ color: 'var(--accent-teal)', fontWeight: 'bold' }}>{latencyTolerance}%</span>
           </div>
           <input
+            id="slider-latency-tolerance"
             type="range"
             min="10"
             max="100"
@@ -197,6 +201,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Target Application</label>
           <input
+            id="input-target-url"
             type="text"
             value={targetUrl}
             onChange={(e) => setTargetUrl(e.target.value)}
@@ -217,6 +222,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Mobile Profile (Reduced Viewport)</span>
           <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
             <input
+              id="checkbox-mobile-profile"
               type="checkbox"
               checked={isMobile}
               onChange={(e) => setIsMobile(e.target.checked)}
@@ -233,6 +239,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Network Profile</label>
           <select
+            id="select-network-profile"
             value={networkProfile}
             onChange={(e) => setNetworkProfile(e.target.value as any)}
             style={{
@@ -254,6 +261,7 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
 
       {/* Action Trigger */}
       <button
+        id="btn-launch-simulation"
         onClick={handleSimulate}
         disabled={isStreaming}
         className="btn-primary"
