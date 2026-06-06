@@ -31,6 +31,18 @@ export default function NovusBridge({
   const [selectedTensionBlock, setSelectedTensionBlock] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
 
+  const isDefaultCheckout = targetUrl.toLowerCase().includes('checkout_form_v2') || targetUrl.toLowerCase().includes('prometheus.test');
+
+  const getElementTension = (el: any, index: number) => {
+    const str = el.text + el.tag + el.id + el.className;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const baseTension = Math.abs(hash % 60) + 20; // 20% to 80%
+    return isCalibrated ? Math.max(10, Math.round(baseTension * 0.6)) : baseTension;
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setLogs((window as any).pendoLogs || []);
@@ -83,18 +95,6 @@ export default function NovusBridge({
   };
 
   const funnelData = getDynamicFunnel();
-
-  const isDefaultCheckout = targetUrl.toLowerCase().includes('checkout_form_v2') || targetUrl.toLowerCase().includes('prometheus.test');
-
-  const getElementTension = (el: any, index: number) => {
-    const str = el.text + el.tag + el.id + el.className;
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const baseTension = Math.abs(hash % 60) + 20; // 20% to 80%
-    return isCalibrated ? Math.max(10, Math.round(baseTension * 0.6)) : baseTension;
-  };
 
   // Select 4 interesting interactive elements to show in the map
   const activeTensionElements = isDefaultCheckout || mappedElements.length === 0
