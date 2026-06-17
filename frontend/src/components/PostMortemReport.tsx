@@ -1,14 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TelemetryState } from '../hooks/useSimulationStream';
+
+declare const pendo: any;
+const trackedReportSimulations = new Set<string>();
 
 interface PostMortemReportProps {
   streamData: TelemetryState[];
   persona: 'IMPATIENT' | 'ANALYTICAL' | 'FRUSTRATED';
+  simulationId?: string;
 }
 
-export default function PostMortemReport({ streamData, persona }: PostMortemReportProps) {
+export default function PostMortemReport({ streamData, persona, simulationId }: PostMortemReportProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    if (!simulationId) return;
+    const url = `${window.location.origin}/report/${simulationId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+    if (typeof pendo !== 'undefined') {
+      pendo.track('report_shared', { simulation_id: simulationId });
+    }
+  };
   const isFinished = streamData.length > 0 && 
     (streamData[streamData.length - 1].last_action === 'ABANDON' || streamData.length >= 5);
 
@@ -63,14 +80,39 @@ export default function PostMortemReport({ streamData, persona }: PostMortemRepo
   return (
     <div className="prometheus-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeIn 0.5s ease-out', flexShrink: 0 }}>
       
-      {/* Title */}
-      <div>
-        <h3 className="text-glow-critical" style={{ fontSize: '1.4rem', marginBottom: '4px' }}>
-          UX Debt Post-Mortem
-        </h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-          Synthetic analysis generated from the behavioral interactions of the Eidolon cohort.
-        </p>
+      {/* Title + Share Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h3 className="text-glow-critical" style={{ fontSize: '1.4rem', marginBottom: '4px' }}>
+            UX Debt Post-Mortem
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            Synthetic analysis generated from the behavioral interactions of the Eidolon cohort.
+          </p>
+        </div>
+        {simulationId && (
+          <button
+            id="btn-share-report"
+            onClick={handleShare}
+            style={{
+              flexShrink: 0,
+              padding: '7px 14px',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              background: copied ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.04)',
+              color: copied ? 'var(--accent-teal)' : 'var(--text-secondary)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {copied ? '✓ Copied!' : '🔗 Share'}
+          </button>
+        )}
       </div>
 
       {/* Grade and Global Metrics Grid */}

@@ -1,17 +1,55 @@
 import asyncio
 import json
 import random
-from typing import AsyncGenerator
+import aiosqlite
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import AsyncGenerator, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 from enum import Enum
+
+DB_PATH = "prometheus.db"
+
+async def init_db():
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS visitors (
+                visitor_id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                display_name TEXT DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS simulations (
+                simulation_id TEXT PRIMARY KEY,
+                visitor_id TEXT NOT NULL,
+                persona TEXT NOT NULL,
+                ux_debt_score INTEGER NOT NULL,
+                grade TEXT NOT NULL,
+                success_rate INTEGER NOT NULL,
+                max_frustration REAL NOT NULL,
+                steps_count INTEGER NOT NULL,
+                is_calibrated INTEGER DEFAULT 0,
+                target_url TEXT DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+        """)
+        await db.commit()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
 
 app = FastAPI(
     title="Prometheus Core Engine",
     description="Cognitive User Simulation & Telemetry Stream Server",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for Next.js dev server on port 3000
@@ -425,6 +463,140 @@ def proxy_url(url: str):
             status_code=200
         )
 
+
+# ─── Health Check ─────────────────────────────────────────────────────────────
+
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint for uptime monitoring."""
+    return {"status": "ok", "version": "1.0.0"}
+
+
+# ─── Visitor Registration (lightweight auth) ───────────────────────────────────
+
+class VisitorRegisterRequest(BaseModel):
+    email: str
+    display_name: Optional[str] = ""
+
+@app.post("/api/visitors/register")
+async def register_visitor(body: VisitorRegisterRequest):
+    """
+    Register or retrieve a visitor by email.
+    Returns a deterministic visitor_id derived from the email.
+    """
+    import hashlib
+    raw = body.email.strip().lower()
+    visitor_id = "usr_" + hashlib.sha256(raw.encode()).hexdigest()[:9]
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Insert if not exists (email is unique)
+        await db.execute(
+            """
+            INSERT INTO visitors (visitor_id, email, display_name, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET display_name = excluded.display_name
+            """,
+            (visitor_id, raw, body.display_name or "", now)
+        )
+        await db.commit()
+        # Fetch the stored record
+        async with db.execute(
+            "SELECT visitor_id, email, display_name, created_at FROM visitors WHERE email = ?",
+            (raw,)
+        ) as cursor:
+            row = await cursor.fetchone()
+    return {
+        "visitor_id": row[0],
+        "email": row[1],
+        "display_name": row[2],
+        "created_at": row[3],
+        "account_id": raw.split("@")[-1] if "@" in raw else "unknown"
+    }
+
+
+# ─── Simulation Results Persistence ───────────────────────────────────────────
+
+class SimulationResultRequest(BaseModel):
+    visitor_id: str
+    persona: str
+    ux_debt_score: int
+    grade: str
+    success_rate: int
+    max_frustration: float
+    steps_count: int
+    is_calibrated: bool = False
+    target_url: str = ""
+
+@app.post("/api/simulations/{simulation_id}/results")
+async def save_simulation_results(simulation_id: str, body: SimulationResultRequest):
+    """Persist simulation results to SQLite for history and shareable reports."""
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT INTO simulations (
+                simulation_id, visitor_id, persona, ux_debt_score, grade,
+                success_rate, max_frustration, steps_count, is_calibrated, target_url, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(simulation_id) DO NOTHING
+            """,
+            (
+                simulation_id, body.visitor_id, body.persona, body.ux_debt_score,
+                body.grade, body.success_rate, body.max_frustration, body.steps_count,
+                1 if body.is_calibrated else 0, body.target_url, now
+            )
+        )
+        await db.commit()
+    return {"status": "saved", "simulation_id": simulation_id}
+
+
+# ─── Shareable Report ──────────────────────────────────────────────────────────
+
+@app.get("/api/simulations/{simulation_id}/report")
+async def get_simulation_report(simulation_id: str):
+    """Return a simulation report for the shareable /report/[id] page."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT s.simulation_id, s.persona, s.ux_debt_score, s.grade,
+                   s.success_rate, s.max_frustration, s.steps_count, s.created_at,
+                   v.display_name, v.email
+            FROM simulations s
+            LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
+            WHERE s.simulation_id = ?
+            """,
+            (simulation_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+    if not row:
+        return JSONResponse({"error": "Report not found"}, status_code=404)
+    return dict(row)
+
+
+# ─── Visitor Simulation History ────────────────────────────────────────────────
+
+@app.get("/api/simulations/visitor/{visitor_id}")
+async def get_visitor_history(visitor_id: str):
+    """Return all past simulations for a given visitor (for history reload on mount)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT simulation_id, persona, ux_debt_score, grade,
+                   success_rate, max_frustration, steps_count, is_calibrated, target_url, created_at
+            FROM simulations
+            WHERE visitor_id = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+            """,
+            (visitor_id,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+

@@ -31,18 +31,36 @@ export function useSimulationStream() {
     setStreamData([]);
   }, [stopStream]);
 
-  const startStream = useCallback((simulationId: string, persona: 'IMPATIENT' | 'ANALYTICAL' | 'FRUSTRATED', calibrated: boolean = false) => {
+  const startStream = useCallback(async (simulationId: string, persona: 'IMPATIENT' | 'ANALYTICAL' | 'FRUSTRATED', calibrated: boolean = false) => {
     // 1. Immediately clean up and close any existing stream connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
-    
+
     setStreamData([]);
     setIsStreaming(true);
     eventsReceivedRef.current = 0;
 
     // 2. Direct connect to Uvicorn using the exact parameters, dynamic hostname matching client origin or NEXT_PUBLIC_API_URL
     const apiBase = process.env.NEXT_PUBLIC_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}:8000`;
+
+    // ── Step 4: Health check before opening SSE stream ────────────────────────
+    try {
+      const healthRes = await fetch(`${apiBase}/health`, { signal: AbortSignal.timeout(4000) });
+      if (!healthRes.ok) throw new Error('Backend unhealthy');
+    } catch {
+      console.warn('[Prometheus] Backend unreachable — simulation stream aborted.');
+      if (typeof pendo !== 'undefined') {
+        pendo.track('sse_stream_error', {
+          simulation_id: simulationId,
+          events_received_count: 0,
+          error_type: 'backend_offline'
+        });
+      }
+      setIsStreaming(false);
+      return;
+    }
+
     const url = `${apiBase}/api/simulations/${simulationId}/stream?persona=${persona}&calibrated=${calibrated}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
