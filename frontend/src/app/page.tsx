@@ -120,16 +120,20 @@ export default function Home() {
             gradeColor = 'var(--accent-critical)';
           }
 
-          pendo.track('post_mortem_report_generated', {
-            simulation_id: simulationId,
-            persona: selectedPersona,
-            ux_debt_score: uxDebtScore,
-            grade: grade,
-            grade_color: gradeColor,
-            success_rate: successRate,
-            max_frustration: maxFrustration,
-            interaction_steps: streamData.length
-          });
+          setTimeout(() => {
+            if (typeof pendo !== 'undefined') {
+              pendo.track('post_mortem_report_generated', {
+                simulation_id: simulationId,
+                persona: selectedPersona,
+                ux_debt_score: uxDebtScore,
+                grade: grade,
+                grade_color: gradeColor,
+                success_rate: successRate,
+                max_frustration: maxFrustration,
+                interaction_steps: streamData.length
+              });
+            }
+          }, 100);
         }
         setSimulationHistory(prev => {
           if (prev.some(run => run.id === simulationId)) {
@@ -161,14 +165,16 @@ export default function Home() {
     setSelectedPersona(config.persona);
     setTargetUrl(config.targetUrl);
 
-    if (typeof pendo !== 'undefined') {
-      pendo.track('simulation_launched', {
-        simulation_id: newSimId,
-        persona: config.persona,
-        is_calibrated: isCalibrated,
-        target_url: config.targetUrl
-      });
-    }
+    setTimeout(() => {
+      if (typeof pendo !== 'undefined') {
+        pendo.track('simulation_launched', {
+          simulation_id: newSimId,
+          persona: config.persona,
+          is_calibrated: isCalibrated,
+          target_url: config.targetUrl
+        });
+      }
+    }, 150);
 
     // Trigger direct connection immediately using new parameters with calibration state
     startStream(newSimId, config.persona, isCalibrated);

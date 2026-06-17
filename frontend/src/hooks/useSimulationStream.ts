@@ -47,14 +47,16 @@ export function useSimulationStream() {
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
-    if (typeof pendo !== 'undefined') {
-      pendo.track('sse_stream_connected', {
-        simulation_id: simulationId,
-        persona: persona,
-        calibrated: calibrated,
-        stream_url: url
-      });
-    }
+    setTimeout(() => {
+      if (typeof pendo !== 'undefined') {
+        pendo.track('sse_stream_connected', {
+          simulation_id: simulationId,
+          persona: persona,
+          calibrated: calibrated,
+          stream_url: url
+        });
+      }
+    }, 200);
 
     eventSource.addEventListener('state_mutation', (event) => {
       try {
