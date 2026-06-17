@@ -46,7 +46,7 @@ export function useSimulationStream() {
 
     // ── Step 4: Health check before opening SSE stream ────────────────────────
     try {
-      const healthRes = await fetch(`${apiBase}/health`, { signal: AbortSignal.timeout(4000) });
+      const healthRes = await fetch(`${apiBase}/api/health`, { signal: AbortSignal.timeout(4000) });
       if (!healthRes.ok) throw new Error('Backend unhealthy');
     } catch {
       console.warn('[Prometheus] Backend unreachable — simulation stream aborted.');

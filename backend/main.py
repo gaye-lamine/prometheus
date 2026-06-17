@@ -466,7 +466,7 @@ def proxy_url(url: str):
 
 # ─── Health Check ─────────────────────────────────────────────────────────────
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Simple health check endpoint for uptime monitoring."""
     return {"status": "ok", "version": "1.0.0"}
