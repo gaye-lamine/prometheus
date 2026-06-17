@@ -1,10 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { TelemetryState } from '../hooks/useSimulationStream';
-
-declare const pendo: any;
-const trackedReportSimulations = new Set<string>();
 
 interface PostMortemReportProps {
   streamData: TelemetryState[];
@@ -16,35 +13,6 @@ export default function PostMortemReport({ streamData, persona }: PostMortemRepo
     (streamData[streamData.length - 1].last_action === 'ABANDON' || streamData.length >= 5);
 
   const latestState = streamData.length > 0 ? streamData[streamData.length - 1] : null;
-  const reportKey = latestState ? `${persona}_${streamData.length}_${latestState.agent_id}` : '';
-
-  useEffect(() => {
-    if (isFinished && latestState && reportKey && !trackedReportSimulations.has(reportKey) && typeof pendo !== 'undefined') {
-      trackedReportSimulations.add(reportKey);
-      
-      const maxFrustration = Math.max(...streamData.map(s => s.frustration_matrix));
-      const successRate = latestState.last_action !== 'ABANDON' ? 100 : 0;
-      const uxDebtScore = Math.round(maxFrustration * 100);
-      
-      let grade = 'A';
-      let gradeColor = 'var(--accent-teal)';
-      if (uxDebtScore > 15 && uxDebtScore <= 35) {
-        grade = 'B';
-        gradeColor = '#a855f7';
-      } else if (uxDebtScore > 35 && uxDebtScore <= 60) {
-        grade = 'C';
-        gradeColor = 'rgba(99,102,241,1)';
-      } else if (uxDebtScore > 60 && uxDebtScore <= 85) {
-        grade = 'D';
-        gradeColor = '#eab308';
-      } else if (uxDebtScore > 85) {
-        grade = 'F';
-        gradeColor = 'var(--accent-critical)';
-      }
-
-      // Tracking moved to page.tsx to ensure sequential firing (Step 4 immediately after Step 3)
-    }
-  }, [isFinished, reportKey, persona, latestState, streamData]);
 
   if (!isFinished) {
     return (
