@@ -1,0 +1,13 @@
+[Unit]
+Description=Prometheus FastAPI Backend Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/prometheus-backend
+ExecStart=/root/prometheus-backend/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

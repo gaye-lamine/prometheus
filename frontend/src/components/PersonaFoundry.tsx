@@ -64,16 +64,38 @@ export default function PersonaFoundry({ onLaunch, isStreaming }: PersonaFoundry
   const handleSimulate = () => {
     // Fire Pendo/Novus.ai analytics event to show the meta-analytical bridge
     if (typeof window !== 'undefined' && (window as any).pendo) {
+      // Step 1: Persona Configuration
+      (window as any).pendo.track('persona_profile_configured', {
+        persona_type: persona,
+        auto_attention_span: attentionSpan,
+        auto_technical_literacy: technicalLiteracy,
+        auto_latency_tolerance: latencyTolerance
+      });
+
+      // Step 2: Target URL Configuration
+      (window as any).pendo.track('target_url_configured', {
+        target_url: targetUrl
+      });
+
+      // Step 3: Simulation Initialized
       (window as any).pendo.track('simulation_initialized', {
         persona_type: persona,
         attention_span: attentionSpan,
         technical_literacy: technicalLiteracy,
         network_profile: networkProfile,
-        is_mobile: isMobile
+        is_mobile: isMobile,
+        target_url: targetUrl
       });
     }
 
-    if (typeof pendo !== 'undefined') {
+    if (typeof pendo !== 'undefined' && typeof window === 'undefined') {
+      pendo.track('persona_profile_configured', {
+        persona_type: persona,
+        auto_attention_span: attentionSpan,
+        auto_technical_literacy: technicalLiteracy,
+        auto_latency_tolerance: latencyTolerance
+      });
+      pendo.track('target_url_configured', { target_url: targetUrl });
       pendo.track('simulation_initialized', {
         persona_type: persona,
         attention_span: attentionSpan,

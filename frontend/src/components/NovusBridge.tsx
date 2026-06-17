@@ -179,10 +179,17 @@ export default function NovusBridge({
       setLastTuned('Just now');
 
       if (typeof pendo !== 'undefined') {
+        pendo.track('tension_block_selected', {
+          tension_id: 'auto_alignment',
+          auto_selected: true
+        });
+
         pendo.track('calibration_completed', {
           previous_discrepancy: discrepancy,
           new_discrepancy: 1.2,
           calibration_duration_ms: Date.now() - calibrationStartTime,
+          simulations_analyzed: simulationHistory.length
+        });
           phases_completed: 4
         });
       }
