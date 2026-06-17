@@ -42,15 +42,7 @@ export default function PostMortemReport({ streamData, persona }: PostMortemRepo
         gradeColor = 'var(--accent-critical)';
       }
 
-      pendo.track('post_mortem_report_generated', {
-        persona: persona,
-        ux_debt_score: uxDebtScore,
-        grade: grade,
-        grade_color: gradeColor,
-        success_rate: successRate,
-        max_frustration: maxFrustration,
-        interaction_steps: streamData.length
-      });
+      // Tracking moved to page.tsx to ensure sequential firing (Step 4 immediately after Step 3)
     }
   }, [isFinished, reportKey, persona, latestState, streamData]);
 

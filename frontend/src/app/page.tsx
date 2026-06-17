@@ -98,6 +98,38 @@ export default function Home() {
             steps_count: streamData.length,
             is_calibrated: isCalibrated
           });
+
+          // Step 4: Fire Post Mortem Report tracking sequentially right after Simulation Completed
+          const maxFrustration = Math.max(...streamData.map(s => s.frustration_matrix));
+          const successRate = latest.last_action !== 'ABANDON' ? 100 : 0;
+          const uxDebtScore = Math.round(maxFrustration * 100);
+          
+          let grade = 'A';
+          let gradeColor = 'var(--accent-teal)';
+          if (uxDebtScore > 15 && uxDebtScore <= 35) {
+            grade = 'B';
+            gradeColor = '#a855f7';
+          } else if (uxDebtScore > 35 && uxDebtScore <= 60) {
+            grade = 'C';
+            gradeColor = 'rgba(99,102,241,1)';
+          } else if (uxDebtScore > 60 && uxDebtScore <= 85) {
+            grade = 'D';
+            gradeColor = '#eab308';
+          } else if (uxDebtScore > 85) {
+            grade = 'F';
+            gradeColor = 'var(--accent-critical)';
+          }
+
+          pendo.track('post_mortem_report_generated', {
+            simulation_id: simulationId,
+            persona: selectedPersona,
+            ux_debt_score: uxDebtScore,
+            grade: grade,
+            grade_color: gradeColor,
+            success_rate: successRate,
+            max_frustration: maxFrustration,
+            interaction_steps: streamData.length
+          });
         }
         setSimulationHistory(prev => {
           if (prev.some(run => run.id === simulationId)) {
