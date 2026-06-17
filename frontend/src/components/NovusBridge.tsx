@@ -188,8 +188,7 @@ export default function NovusBridge({
           previous_discrepancy: discrepancy,
           new_discrepancy: 1.2,
           calibration_duration_ms: Date.now() - calibrationStartTime,
-          simulations_analyzed: simulationHistory.length
-        });
+          simulations_analyzed: simulationHistory.length,
           phases_completed: 4
         });
       }
