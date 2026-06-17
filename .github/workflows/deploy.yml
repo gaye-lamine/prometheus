@@ -20,11 +20,26 @@ jobs:
           host: 72.60.213.116
           username: root
           password: ${{ secrets.VPS_PASSWORD }}
+          command_timeout: 20m
           script: |
-            mkdir -p /root/prometheus-backend
-            cd /root/prometheus-backend
-            # Pull latest code or sync files
-            # Rebuilds and restarts the backend container
-            docker compose down
-            docker compose build
-            docker compose up -d
+            set -e
+
+            # ── Sync latest code from GitHub ──────────────────────────────────
+            if [ -d /root/prometheus-backend/.git ]; then
+              cd /root/prometheus-backend
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              rm -rf /root/prometheus-backend
+              git clone https://github.com/gaye-lamine/prometheus.git /root/prometheus-backend
+              cd /root/prometheus-backend
+            fi
+
+            # ── Rebuild and restart backend container ─────────────────────────
+            cd /root/prometheus-backend/backend
+            docker compose down --remove-orphans || true
+            docker compose build --no-cache
+            nohup docker compose up -d > /tmp/docker-up.log 2>&1 &
+            sleep 5
+            docker compose ps
+            echo "✅ Backend deployed successfully"
